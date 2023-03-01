@@ -1,0 +1,41 @@
+{
+    "fileName": "id_1677681648113_81_propertyChange",
+    "fileType": "change",
+    "changeType": "propertyChange",
+    "moduleName": "",
+    "reference": "pdfprintui5",
+    "packageName": "",
+    "content": {
+        "property": "liveMode",
+        "newValue": true
+    },
+    "selector": {
+        "id": "pdfprintui5::sap.suite.ui.generic.template.AnalyticalListPage.view.AnalyticalListPage::ZC_SFLIGHT_CAPABILITY_CDS--template::SmartFilterBar",
+        "idIsLocal": false,
+        "type": "sap.ui.comp.smartfilterbar.SmartFilterBar"
+    },
+    "layer": "CUSTOMER_BASE",
+    "texts": {},
+    "namespace": "apps/pdfprintui5/changes/",
+    "projectId": "",
+    "creation": 1677681648113,
+    "originalLanguage": "",
+    "support": {
+        "generator": "changeUtils: SAPFioriTools",
+        "service": "",
+        "user": "",
+        "sapui5Version": "1.84.32",
+        "sourceChangeFileName": "",
+        "compositeCommand": ""
+    },
+    "oDataInformation": {},
+    "dependentSelector": {},
+    "validAppVersions": {
+        "from": "0.0.1",
+        "to": "0.0.1",
+        "creation": "0.0.1"
+    },
+    "jsOnly": false,
+    "variantReference": "",
+    "appDescriptorChange": false
+}
