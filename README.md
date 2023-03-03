@@ -24,14 +24,14 @@
 ## Built with 🛠️
 _Back-end:_
 * **ABAP CDS**
+* **Annotations**
 
 _Gateway:_
 * **oData**
 
 _Front-End:_
-* **UI5**
-* **CSS**
-* **Annotations**
+* **Javascript / UI5**
+* **Fiori Elements**
 
 ---
 
