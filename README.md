@@ -17,7 +17,7 @@
 </div>
 
 ## Starting 🚀
-Creation of UI5 application that consists of a creation form and a table where we will show the records created at the moment, the back-end part is made up of CDS and Odata Service
+This application consists of extending an analytical list page and using third-party libraries to make a functionality that allows printing a smartchart
 
 ### Pre-requirements 📋
 
@@ -25,7 +25,7 @@ _Tools you need to be able to develop this application_
 
 * **SAP Logon** 
 * **Eclipse**
-* **SAP Web IDE** or **SAP BAS** 
+* **SAP BAS** 
 
 ## Practical case ⚙️
 
@@ -33,508 +33,355 @@ _In this application we are going to develop both the back-end and the front-end
 
 ### Back-end 🔩
 #### 1. ABAP CDS
-* **TRANSACTIONAL:** From this view we will consume the table created previously in SAP Logon
+* **BASIC:** From this view we will consume the table from the on-premise system
 ```abap
-@AbapCatalog.sqlViewName: 'ZTFORMULARIO'
+@AbapCatalog.sqlViewName: 'ZISFLIGHTDEMOCDS'
 @AbapCatalog.compiler.compareFilter: true
 @AbapCatalog.preserveKey: true
-@AccessControl.authorizationCheck: #CHECK
-@EndUserText.label: 'CDS Formulario Transaccional'
-@VDM.viewType: #TRANSACTIONAL
-define view ZT_FORMULARIO as select from zformulario_ui5 {
-    key nombre,
-    key apellido,
-    key dni,
-    movil,
-    direccion
+@AccessControl.authorizationCheck: #NOT_REQUIRED
+@VDM.viewType: #BASIC
+@EndUserText.label: 'Basic CDS to capability demo'
+define view ZI_SFLIGHT_DEMO_CDS
+  as select from sflight
+{
+key carrid as Carrid,
+key connid as Connid,
+key fldate as Fldate,
+price as Price,
+currency as Currency,
+planetype as Planetype,
+seatsmax as Seatsmax,
+seatsocc as Seatsocc,
+paymentsum as Paymentsum,
+seatsmax_b as SeatsmaxB,
+seatsocc_b as SeatsoccB,
+seatsmax_f as SeatsmaxF,
+seatsocc_f as SeatsoccF
+
 }
 
 ```
-* **CONSUMITION:** From this view we will consume and activate both the oData and the BOPF, being able to also give annotations for visualization from the front-end 
+* **CONSUMITION:** From this view we will consume and activate the oData
 ```abap
-@AbapCatalog.sqlViewName: 'ZCFORMULARIO'
+@AbapCatalog.sqlViewName: 'ZCSFLIGHTCAP'
 @AbapCatalog.compiler.compareFilter: true
 @AbapCatalog.preserveKey: true
-@AccessControl.authorizationCheck: #CHECK
-@EndUserText.label: 'CDS Formulario Consumicion'
+@AccessControl.authorizationCheck: #NOT_REQUIRED
 @VDM.viewType: #CONSUMPTION
-@ObjectModel.writeEnabled: true
-@ObjectModel.writeActivePersistence: 'zformulario_ui5'
-@ObjectModel.semanticKey: [ 'nombre' ] 
-@ObjectModel: {
-    transactionalProcessingEnabled: true,
-    compositionRoot: true,
-    createEnabled: true,
-    updateEnabled: true,
-    deleteEnabled: true
+@Metadata.allowExtensions: true
+@OData.publish: true
+@EndUserText.label: 'Consumption CDS to capability demo'
+define view ZC_SFLIGHT_CAPABILITY_CDS
+  as select from ZI_SFLIGHT_DEMO_CDS
+{
+  key Carrid,
+  key Connid,
+  key Fldate,
+      Price,
+      Currency,
+      Planetype,
+      Seatsmax,
+      Seatsocc,
+      Paymentsum,
+      SeatsmaxB,
+      SeatsoccB,
+      SeatsmaxF,
+      SeatsoccF
 }
-@OData: {
-    publish: true
+```
+
+* **METADA EXTENSIONS:** It is good practice to separate the annotations with CDS view logic. A metadata extension separate annotation from business logic. To implement metadata extension
+
+* Add annotation @metadata.allExtensions:true to the CDS view
+* Create a blank CDS metadata extension and add annotations to it
+Metadata extensions only allow annotation of JSON style.
+
+```abap
+@Metadata.layer: #(sflight)
+@UI.chart: [
+  {
+    chartType: #COLUMN,
+    dimensions: [
+      'Planetype'
+    ],
+    measures: [
+      'Seatsmax'
+    ]
+  }
+]
+@UI: {
+    headerInfo: {
+        typeName: 'Flight',
+        typeNamePlural: 'Flights',
+                title: {
+            type: #STANDARD, value: 'Carrid'
+        },
+                description: {
+            value: 'Planetype'
+        }
+    }
 }
-define view ZC_FORMULARIO as select from ZT_FORMULARIO {
-    @UI: {
-      lineItem: [ { position: 10, label: 'Name' } ]}
-    @EndUserText.label: 'Name' 
-    key nombre,
-    @UI: {
-     lineItem: [ { position: 20, label: 'Surname' } ] }
-    @EndUserText.label: 'Surname' 
-    key apellido,
-    @UI: {
-     lineItem: [ { position: 30, label: 'ID' } ] }
-    @EndUserText.label: 'ID' 
-    key dni,
-    @UI: {
-      lineItem: [ { position: 40, label: 'TMobile Phone' } ] }
-    @EndUserText.label: 'Mobile Phone' 
-    movil,
-    @UI: {
-      lineItem: [ { position: 50, label: 'Email' } ]}
-    @EndUserText.label: 'Email' 
-    direccion    
+
+annotate entity ZC_SFLIGHT_CAPABILITY_CDS with
+{
+
+  @UI.facet: [
+   {
+       id: 'Fldateheaderid',
+       purpose: #HEADER,
+       type: #DATAPOINT_REFERENCE,
+       position: 10,
+       targetQualifier: 'Fldateheader'
+   },
+   {
+       id: 'Currencyheaderid',
+       purpose: #HEADER,
+       type: #DATAPOINT_REFERENCE,
+       position: 20,
+       targetQualifier: 'Priceheader'
+    },
+       {
+      label: 'General Information',
+      id: 'GeneralInfo',
+      type: #COLLECTION,
+      position: 10
+    },
+    {
+        id: 'Price',
+        purpose: #STANDARD,
+        type: #IDENTIFICATION_REFERENCE,
+        parentId: 'GeneralInfo',
+        label: 'Price',
+        position: 10
+     }
+  ]
+  @UI.lineItem: [{position: 10 }]
+  @UI.selectionField: [{position: 10 }]
+  Carrid;
+  @UI.lineItem: [{position: 20 }]
+  @UI.selectionField: [{position: 20 }]
+  Connid;
+  @UI.lineItem: [{position: 30 }]
+  @UI.selectionField: [{position: 30 }]
+  @UI.dataPoint: { qualifier: 'Fldateheader', title: 'Flight Date'}
+  Fldate;
+  @UI.dataPoint: { qualifier: 'Priceheader', title: 'Airfare'}
+  @UI.lineItem: [{position: 40 }]
+  @UI.identification: [{ position: 10 }]
+  Price;
+  @UI.dataPoint: { qualifier: 'Currencyheader', title: 'Airline Currency'}
+  @UI.lineItem: [{position: 50 }]
+  @UI.identification: [{ position: 20 }]
+  Currency;
+  @UI.lineItem: [{position: 60 }]
+  Planetype;
+  @UI.lineItem: [{position: 70 }]
+  Seatsmax;
+  @UI.lineItem: [{position: 80 }]
+  Seatsocc;
+  @UI.lineItem: [{position: 90 }]
+  Paymentsum;
+  @UI.lineItem: [{position: 100 }]
+  SeatsmaxB;
+  @UI.lineItem: [{position: 110 }]
+  SeatsoccB;
+  @UI.lineItem: [{position: 120 }]
+  SeatsmaxF;
+  @UI.lineItem: [{position: 130 }]
+  SeatsoccF;
+
 }
 ```
 
 ### Front-End ⌨️
-#### 2. UI5 Fiori elements applications (Web IDE)
-* Select SAPUI5 Application as the template.
+#### 2. Fiori Elements Analytical List Page ( SAP BAS or VSCODE )
+* Select Analytical List Page as the template.
 
-![image](https://user-images.githubusercontent.com/55688528/182622309-19fec7f8-5676-4596-b2c9-cea501563b69.png)
+* Fill the project name, title, namespace, description and oData.
 
-* Fill the project name, title, namespace and description.
-
-* Configure the the OData service on the manifest.json.
+* Once the project is created we can check our odata in the manifest.json.
 ```json
-		"dataSources": {
-			"ZC_FORMULARIO_CDS": {
-				"uri": "/sap/opu/odata/sap/ZC_FORMULARIO_CDS/",
-				"type": "OData",
-				"settings": {
-					"localUri": "localService/metadata.xml",
-					"annotations": [
-						"annotation0"
-					]
-				}
-			},
-			"annotation0": {
-				"type": "ODataAnnotation",
-				"uri": "annotations/annotation0.xml",
-				"settings": {
-					"localUri": "annotations/annotation0.xml"
-				}
-			}
-		}
+		    "dataSources": {
+      "mainService": {
+        "uri": "/sap/opu/odata/sap/ZC_SFLIGHT_CAPABILITY_CDS_CDS/",
+        "type": "OData",
+        "settings": {
+          "annotations": ["ZC_SFLIGHT_CAPABILITY_CDS_CD_VAN", "annotation"],
+          "localUri": "localService/metadata.xml",
+          "odataVersion": "2.0"
+        }
+      },
+      "ZC_SFLIGHT_CAPABILITY_CDS_CD_VAN": {
+        "uri": "/sap/opu/odata/IWFND/CATALOGSERVICE;v=2/Annotations(TechnicalName='ZC_SFLIGHT_CAPABILITY_CDS_CD_VAN',Version='0001')/$value/",
+        "type": "ODataAnnotation",
+        "settings": {
+          "localUri": "localService/ZC_SFLIGHT_CAPABILITY_CDS_CD_VAN.xml"
+        }
+      },
+      "annotation": {
+        "type": "ODataAnnotation",
+        "uri": "annotations/annotation.xml",
+        "settings": {
+          "localUri": "annotations/annotation.xml"
+        }
+      }
+    }
   
   ```
-* Next I will show the main view where we will paint the form and the table.
+* The following will be to extend the controller by creating the following folders and file ext/controller/AnalyticalListPageExt.controller.js in the webapp path. Once the file is created, we refer to it in the manifest.
 
-```xml
-<mvc:View controllerName="ZFORMULARIO_UI5.ZFORMULARIO_UI5.controller.View1" xmlns:mvc="sap.ui.core.mvc" xmlns:l="sap.ui.layout"
-	xmlns:f="sap.ui.layout.form" xmlns:core="sap.ui.core" xmlns="sap.m" xmlns:smartFilterBar="sap.ui.comp.smartfilterbar"
-	xmlns:smartTable="sap.ui.comp.smarttable" xmlns:html="http://www.w3.org/1999/xhtml"
-	xmlns:app="http://schemas.sap.com/sapui5/extension/sap.ui.core.CustomData/1" xmlns:tnt="sap.tnt">
-	<tnt:ToolHeader id="toolHeader">
-		<core:Icon src="sap-icon://sap-ui5" id="iconHeader"/>
-		<Text text="UI5 FORM" id="textHeader"/>
-	</tnt:ToolHeader>
-	<VBox class="sapUiSmallMargin">
-		<f:Form id="FormToolbar" editable="true" ariaLabelledBy="Title1">
-			<f:toolbar>
-				<Toolbar id="TB1">
-					<core:Icon src="sap-icon://form" id="iconForm"/>
-					<Title id="Title1" text="User Creation"/>
-					<ToolbarSpacer/>
-					<Button id="btnCrear" text="Save" icon="sap-icon://add" press="onCrear"/>
-				</Toolbar>
-			</f:toolbar>
-			<f:layout>
-				<f:ResponsiveGridLayout labelSpanXL="4" labelSpanL="3" labelSpanM="4" labelSpanS="12" adjustLabelSpan="false" emptySpanXL="0" emptySpanL="4"
-					emptySpanM="0" emptySpanS="0" columnsXL="2" columnsL="1" columnsM="1" singleContainerFullSize="false"/>
-			</f:layout>
-			<f:formContainers>
-				<f:FormContainer ariaLabelledBy="Title2" id="personalInformationBox">
-					<f:toolbar >
-						<Toolbar id="personalInformationToolbar">
-							<Title id="Title2" text="Personal Information"/>
-						</Toolbar>
-					</f:toolbar>
-					<f:formElements>
-						<f:FormElement label="Name">
-							<f:fields >
-								<Input id="Nombre" required="true" placeholder="Enter Name"/>
-							</f:fields>
-						</f:FormElement>
-						<f:FormElement label="Surname">
-							<f:fields>
-								<Input id="Apellido" required="true" placeholder="Enter Surname"/>
-							</f:fields>
-						</f:FormElement>
-						<f:FormElement label="ID">
-							<f:fields>
-								<Input id="DNI" required="true" placeholder="Enter ID"/>
-							</f:fields>
-						</f:FormElement>
-					</f:formElements>
-				</f:FormContainer>
-				<f:FormContainer ariaLabelledBy="Title3" id="contactDetailsBox">
-					<f:toolbar>
-						<Toolbar id="contactDetailsToolbar">
-							<Title id="Title3" text="Contact Details"/>
-						</Toolbar>
-					</f:toolbar>
-					<f:formElements>
-						<f:FormElement label="Mobile Phone">
-							<f:fields>
-								<Input id="Movil" type="Number"  placeholder="Enter Mobile Phone"/>
-							</f:fields>
-						</f:FormElement>
-						<f:FormElement label="Email">
-							<f:fields>
-								<Input id="Mail" type="Email"  placeholder="Enter Email"/>
-							</f:fields>
-						</f:FormElement>
-					</f:formElements>
-				</f:FormContainer>
-			</f:formContainers>
-		</f:Form>
-	</VBox>
-	<VBox fitContainer="true">
-		<smartTable:SmartTable id="LineItemsSmartTable" entitySet="ZC_FORMULARIO" tableType="Table" demandPopin="true" useExportToExcel="true"
-			beforeExport="onBeforeExport" useVariantManagement="true" useTablePersonalisation="true" header="Users" showRowCount="true"
-			persistencyKey="SmartTableAnalytical_Explored" enableAutoBinding="true" class="sapUiResponsiveContentPadding">
-			<smartTable:customToolbar id="customToolbar">
-				<OverflowToolbar design="Transparent" id="OverflowToolbar">
-					<ToolbarSpacer/>
-					<OverflowToolbarButton icon="sap-icon://delete" tooltip="Delete Record" press="eliminarRegistro"/>
-				</OverflowToolbar>
-			</smartTable:customToolbar>
-		</smartTable:SmartTable>
-	</VBox>
-</mvc:View>
+```json
+    "extends": {
+      "extensions": {
+        "sap.ui.controllerExtensions": {
+          "sap.suite.ui.generic.template.AnalyticalListPage.view.AnalyticalListPage": {
+            "controllerName": "pdfprintui5.ext.controller.AnalyticalListPageExt",
+          }
+        }
+      }
+    }
 ```
-* This is the respective controller where we do several validations and perform the create and delete for the different records
+* Now we are going to create a custom action (which is a btn which we can give logic to in our controller), for this we give these annotations in the manifest.
+
+```json
+    "extends": {
+      "extensions": {
+        "sap.ui.controllerExtensions": {
+          "sap.suite.ui.generic.template.AnalyticalListPage.view.AnalyticalListPage": {
+            "controllerName": "pdfprintui5.ext.controller.AnalyticalListPageExt",
+            "sap.ui.generic.app": {
+              "ZC_SFLIGHT_CAPABILITY_CDS": {
+                "EntitySet": "ZC_SFLIGHT_CAPABILITY_CDS",
+                "Actions": {
+                  "btnPrintChart": {
+                    "id": "btnPrintChart",
+                    "text": "Print Chart to PDF",
+                    "press": "onPrintChart"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+```
+* We add the necessary third-party libraries to be able to print in pdf with javascript. For that we create the /libs folder in the webapp root and refer to it in the manifest.json, we can also create the css folder to be able to use styles in our app.
+
+```json
+   "resources": {
+      "css": [
+        {
+          "uri": "css/style.css"
+        }
+      ],
+      "js": [
+        {
+          "uri": "libs/rgbcolor.js"
+        },
+        {
+          "uri": "libs/StackBlur.js"
+        },
+        {
+          "uri": "libs/canvg.js"
+        },
+        {
+          "uri": "libs/jspdf.js"
+        }
+      ]
+    }
+```
+* Once our extended controller and our third-party libraries are ready, in the function that is executed when our custom action is clicked we add our feature to print the chart to pdf.
 
 ```javascript
-sap.ui.define([
-	"sap/ui/core/mvc/Controller",
-	"sap/m/MessageBox",
-	"sap/m/MessageToast"
-], function (Controller, MessageBox, MessageToast) {
-	"use strict";
-	return Controller.extend("ZFORMULARIO_UI5.ZFORMULARIO_UI5.controller.View1", {
-		//Create Function
-		onCrear: function () {
-			//Save model into var
-			var oModel = this.getOwnerComponent().getModel();
-			var that = this;
-			//Save mail value and character to check mail
-			var email = this.getView().byId("Mail").getValue();
-			var mailregex = /^\w+[\w-+\.]*\@\w+([-\.]\w+)*\.[a-zA-Z]{2,}$/;
-			//Save values required fields 
-			var nombreField = this.getView().byId("Nombre").getValue();
-			var apellidoField = this.getView().byId("Apellido").getValue();
-			var dniField = this.getView().byId("DNI").getValue();
-			//Validations
-			if (!mailregex.test(email) && email !== "") {
-				MessageBox.error(email + " is not a valid email address");
-				document.getElementById("container-ZFORMULARIO_UI5---View1--Mail-content").style.backgroundColor = '#ff6c6c';
-				document.getElementById("container-ZFORMULARIO_UI5---View1--Mail-inner").style.color = "white";
-			} else if (nombreField === "" || apellidoField === "" ||
-				dniField === "") {
-				MessageBox.error("Fill in the required fields");
-				if (nombreField === "") {
-					document.getElementById("container-ZFORMULARIO_UI5---View1--Nombre-content").style.backgroundColor = '#ff6c6c';
-					document.getElementById("container-ZFORMULARIO_UI5---View1--Nombre-inner").style.color = "white";
-				}
-				if (apellidoField === "") {
-					document.getElementById("container-ZFORMULARIO_UI5---View1--Apellido-content").style.backgroundColor = '#ff6c6c';
-					document.getElementById("container-ZFORMULARIO_UI5---View1--Apellido-inner").style.color = "white";
-				}
-				if (dniField === "") {
-					document.getElementById("container-ZFORMULARIO_UI5---View1--DNI-content").style.backgroundColor = '#ff6c6c';
-					document.getElementById("container-ZFORMULARIO_UI5---View1--DNI-inner").style.color = "white";
-				}
-			} else if (oModel.aBindings[0].aKeys.toString().includes(nombreField) && oModel.aBindings[0].aKeys.toString().includes(
-					apellidoField) && oModel.aBindings[0].aKeys.toString().includes(dniField)) {
-				MessageBox.error("The record is duplicate");
-				document.getElementById("container-ZFORMULARIO_UI5---View1--Nombre-content").style.backgroundColor = '#ff6c6c';
-				document.getElementById("container-ZFORMULARIO_UI5---View1--Nombre-inner").style.color = "white";
-				document.getElementById("container-ZFORMULARIO_UI5---View1--Apellido-content").style.backgroundColor = '#ff6c6c';
-				document.getElementById("container-ZFORMULARIO_UI5---View1--Apellido-inner").style.color = "white";
-				document.getElementById("container-ZFORMULARIO_UI5---View1--DNI-content").style.backgroundColor = '#ff6c6c';
-				document.getElementById("container-ZFORMULARIO_UI5---View1--DNI-inner").style.color = "white";
-			} else {
-				//Create array with the new form register
-				var oEntry = {
-					"nombre": that.getView().byId("Nombre").getValue(),
-					"apellido": that.getView().byId("Apellido").getValue(),
-					"dni": that.getView().byId("DNI").getValue(),
-					"movil": that.getView().byId("Movil").getValue(),
-					"direccion": that.getView().byId("Mail").getValue()
-				};
-				//Push the new register into the table
-				oModel.create("/ZC_FORMULARIO", oEntry, {
-					success: function (oData) {
-						//After create the new register clean the form and set the correct css colors
-						that.getView().byId("Nombre").setValue("");
-						that.getView().byId("Apellido").setValue("");
-						that.getView().byId("DNI").setValue("");
-						that.getView().byId("Movil").setValue("");
-						that.getView().byId("Mail").setValue("");
-						document.getElementById("container-ZFORMULARIO_UI5---View1--Mail-content").style.backgroundColor = '#c3c6d5';
-						document.getElementById("container-ZFORMULARIO_UI5---View1--Mail-inner").style.color = '#22223b';
-						document.getElementById("container-ZFORMULARIO_UI5---View1--Nombre-content").style.backgroundColor = '#c3c6d5';
-						document.getElementById("container-ZFORMULARIO_UI5---View1--Nombre-inner").style.color = "22223b";
-						document.getElementById("container-ZFORMULARIO_UI5---View1--Apellido-content").style.backgroundColor = '#c3c6d5';
-						document.getElementById("container-ZFORMULARIO_UI5---View1--Apellido-inner").style.color = "22223b";
-						document.getElementById("container-ZFORMULARIO_UI5---View1--DNI-content").style.backgroundColor = '#c3c6d5';
-						document.getElementById("container-ZFORMULARIO_UI5---View1--DNI-inner").style.color = "22223b";
-						//Show message Success
-						var msgSuccess = "Record created";
-						MessageToast.show(msgSuccess);
-					},
-					error: function (oData) {
-						//Show message Error
-						var msgError = "Error creating record";
-						MessageToast.show(msgError);
-					}
-				});
-			}
-		},
-		//Delete Function
-		eliminarRegistro: function () {
-			//Save model into var
-			var oModel = this.getOwnerComponent().getModel();
-			var that = this;
-			//Array with the selected register
-			var indiceDelete = that.getView().byId("container-ZFORMULARIO_UI5---View1--LineItemsSmartTable-ui5table")._oLegacySelectionPlugin.oSelectionModel
-				.aSelectedIndices;
-			//Loop when is selected more then one register
-			for (let n of indiceDelete) {
-				//Create Path of the register to delete
-				var sPath = "/" + oModel.aBindings[0].aKeys[n];
-				//Delete from table
-				oModel.remove(sPath, {
-					success: function (oData) {
-						//Show message Success
-						var msgSuccess = "Record deleted";
-						MessageToast.show(msgSuccess);
-					},
-					error: function (oData) {
-						//Show message Error
-						var msgError = "Error deleting record";
-						MessageToast.show(msgError);
-					}
-				});
-			}
-		}
-	});
-});
+sap.ui.define(
+  ["sap/ui/core/BusyIndicator", "sap/m/PDFViewer"],
+  function (BusyIndicator, PDFViewer) {
+    "use strict";
+    return sap.ui.controller(
+      "pdfprintui5.ext.controller.AnalyticalListPageExt",
+      {
+        onPrintChart: function () {
+          BusyIndicator.show(0); //Show busy indicator
+          this.smartChartId =
+            "pdfprintui5::sap.suite.ui.generic.template.AnalyticalListPage.view.AnalyticalListPage::ZC_SFLIGHT_CAPABILITY_CDS--chart"; // Id SmartChart
+          this.chart = this.getView()
+            .byId(this.smartChartId)
+            .getItems()[2]
+            .getAggregation("_vizFrame"); // I get the chart
+          this.chart.setWidth("1100px"); //Adjust Width of the chart
+          this.chart.setHeight("700px"); //Adjust Height of the chart
+          setTimeout(
+            function () {
+              this.processChartPDF();
+            }.bind(this),
+            100
+          );
+        },
+        processChartPDF: function () {
+          var svg = this.chart.getDomRef().getElementsByTagName("svg")[0]; // I get the chart svg
+          var canvas = document.createElement("canvas"); //I create a new canvas with svg height and width
+          var bBox = svg.getBBox();
+          canvas.width = bBox.width;
+          canvas.height = bBox.height;
+          var context = canvas.getContext("2d"); //setting the drawing context
+          var imageObj = new Image(); //Create a new image with svg metadata
+          imageObj.src =
+            "data:image/svg+xml," +
+            jQuery.sap.encodeURL(
+              svg.outerHTML.replace(
+                /^<svg/,
+                '<svg xmlns="http://www.w3.org/2000/svg" version="1.1"'
+              )
+            );
+          imageObj.onload = function () {
+            context.drawImage(imageObj, 0, 0, canvas.width, canvas.height); //Draw the image to the canvas
+            var dataURL = canvas.toDataURL("base64");
+            const doc = new jsPDF("l", "px", "a4"); // A4 landscape 297X210 //Create new jsPDF document
+            doc.addImage(dataURL, "jpg", 10, 20); //add the image
+            this.chart.setWidth("100%"); //Adjust Width of the chart
+            this.chart.setHeight("100%"); //Adjust Height of the chart
+            var blob = doc.output("blob", "chart_in_pdf.pdf");
+            var _pdfurl = URL.createObjectURL(blob);
+            this._pdfViewer = new PDFViewer();
+            this.getView().addDependent(this._pdfViewer);
+            this._PDFViewer = new sap.m.PDFViewer({
+              width: "auto",
+              source: _pdfurl, // my blob url
+              showDownloadButton: true,
+            });
+            jQuery.sap.addUrlWhitelist("blob"); //Register blob url as whitelist
+            this._PDFViewer.open();
+          }.bind(this);
+          setTimeout(function () {
+            BusyIndicator.hide(); //Hide busy indicator
+          },100);
+        },
+      }
+    );
+  }
+);
 ```
-* Finally this is the CSS made for this form
-```css
-body {
-    background-color: #f2e9e4;
-}
-
-.sapMLabel .sapMLabelColonAndRequired {
-    display: none;
-}
-
-div#container-ZFORMULARIO_UI5---View1--toolHeader {
-    background-color: #4a4e69;
-    display: flex;
-    border: none;
-}
-
-div#container-ZFORMULARIO_UI5---View1--TB1 {
-    border: none;
-    background: #c3c6d5;
-    color: #22223b;
-    border-radius: 8rem;
-    box-shadow: 3px 3px 3px rgb(0 0 0 / 15%);
-}
-
-span#container-ZFORMULARIO_UI5---View1--btnCrear-inner {
-    cursor: pointer;
-    border: none;
-    background: #ffb685;
-    border-radius: 8rem;
-    color: #fff;
-}
-
-span#container-ZFORMULARIO_UI5---View1--btnCrear-inner:hover {
-    background: #fff;
-    color: #ffb685;
-}
-
-span#container-ZFORMULARIO_UI5---View1--btnCrear-img {
-    color: #fff;
-}
-
-span#container-ZFORMULARIO_UI5---View1--btnCrear-img:hover {
-    color: #ffb685;
-}
-
-span#container-ZFORMULARIO_UI5---View1--Title1-inner {
-    font-size: 20px;
-}
-
-span#container-ZFORMULARIO_UI5---View1--iconForm {
-    font-size: 20px;
-}
-
-span#container-ZFORMULARIO_UI5---View1--iconHeader {
-    font-size: 30px;
-    color: #ffb685;
-}
-
-span#container-ZFORMULARIO_UI5---View1--textHeader {
-    font-size: 20px;
-    color: #ffb685;
-}
-
-div#container-ZFORMULARIO_UI5---View1--personalInformationBox---Panel {
-    border-radius: 1rem;
-    background: #fef3eb;
-    box-shadow: 5px 8px 5px rgb(0 0 0 / 20%);
-}
-
-div#container-ZFORMULARIO_UI5---View1--FormToolbar--Grid-wrapperfor-container-ZFORMULARIO_UI5---View1--contactDetailsBox---Panel {
-    border-radius: 1rem;
-    background: #fef3eb;
-    box-shadow: 5px 8px 5px rgb(0 0 0 / 20%);
-}
-
-div#container-ZFORMULARIO_UI5---View1--Nombre-content {
-    border: none;
-    background: #c3c6d5;
-    color: #22223b;
-    border-radius: 8rem;
-}
-
-div#container-ZFORMULARIO_UI5---View1--Apellido-content {
-    border: none;
-    background: #c3c6d5;
-    color: #22223b;
-    border-radius: 8rem;
-}
-
-div#container-ZFORMULARIO_UI5---View1--DNI-content {
-    border: none;
-    background: #c3c6d5;
-    color: #22223b;
-    border-radius: 8rem;
-}
-
-div#container-ZFORMULARIO_UI5---View1--Movil-content {
-    border: none;
-    background: #c3c6d5;
-    color: #22223b;
-    border-radius: 8rem;
-}
-
-div#container-ZFORMULARIO_UI5---View1--Mail-content {
-    border: none;
-    background: #c3c6d5;
-    color: #22223b;
-    border-radius: 8rem;
-}
-
-div#container-ZFORMULARIO_UI5---View1--personalInformationToolbar {
-    border-top-left-radius: 10px;
-    border-top-right-radius: 10px;
-    background-color: #4a4e69;
-}
-
-div#container-ZFORMULARIO_UI5---View1--contactDetailsToolbar {
-    border-top-left-radius: 10px;
-    border-top-right-radius: 10px;
-    background-color: #4a4e69;
-}
-
-span#container-ZFORMULARIO_UI5---View1--Title2-inner {
-    color: white;
-}
-
-span#container-ZFORMULARIO_UI5---View1--Title3-inner {
-    color: white;
-}
-
-div#container-ZFORMULARIO_UI5---View1--OverflowToolbar {
-    border: none;
-    background: #ffb685;
-    color: #fff;
-    border-top-left-radius: 10px;
-    border-top-right-radius: 10px;
-    box-shadow: 5px 8px 5px rgb(0 0 0 / 20%);
-}
-
-span#container-ZFORMULARIO_UI5---View1--LineItemsSmartTable-header-inner {
-    color: white;
-}
-
-div#container-ZFORMULARIO_UI5---View1--LineItemsSmartTable-ui5table {
-    border-bottom-left-radius: 10px;
-    border-bottom-right-radius: 10px;
-    box-shadow: 5px 8px 5px rgb(0 0 0 / 20%);
-}
-
-.sapUiTableSelectAllCheckBox::after,
-.sapUiTableRowSelectionCell::after {
-    background-color: #ffb685 !important;
-    color: #fff !important;
-}
-
-.sapMMessageToast {
-    box-sizing: unset;
-    border: none;
-    background: #ffb685;
-    color: #fff;
-    border-radius: 8rem;
-    font-size: 16px;
-    font-family: "Poppins", sans-serif;
-}
-
-bdi#__element0-label-bdi:before {
-    content: "*" !important;
-    color: red !important;
-    font-weight: bold !important;
-}
-
-bdi#__element1-label-bdi:before {
-    content: "*" !important;
-    color: red !important;
-    font-weight: bold !important;
-}
-
-bdi#__element2-label-bdi:before {
-    content: "*" !important;
-    color: red !important;
-    font-weight: bold !important;
-}
-```
-## Testing the UI5 Form 👨‍💻
+## Testing the print pdf feature 👨‍💻
 
 https://user-images.githubusercontent.com/55688528/182627079-1004c56e-835a-4a38-9eee-d6e43dde2e23.mp4
 
 ## Acknowledgement 📚
-- **ABAP CDS**
-- **CSS**
-- **Annotations**
-- **UI5**
+- **ABAP CDS / Annotations**
+- **Javascript / UI5**
+- **Fiori Elements**
 
 ## Built with 🛠️
 _Back-end:_
 * **ABAP CDS**
+* **Annotations**
 
 _Gateway:_
 * **oData**
 
 _Front-End:_
-* **UI5**
-* **CSS**
-* **Annotations**
+* **Javascript / UI5**
+* **Fiori Elements**
 
 ---
 
