@@ -364,7 +364,7 @@ sap.ui.define(
 ```
 ## Testing the print pdf feature 👨‍💻
 
-https://user-images.githubusercontent.com/55688528/182627079-1004c56e-835a-4a38-9eee-d6e43dde2e23.mp4
+https://user-images.githubusercontent.com/55688528/223064464-d04f32ce-a1fd-4e31-95ae-5b790603bb3f.mp4
 
 ## Acknowledgement 📚
 - **ABAP CDS**
