@@ -367,7 +367,7 @@ sap.ui.define(
 https://user-images.githubusercontent.com/55688528/182627079-1004c56e-835a-4a38-9eee-d6e43dde2e23.mp4
 
 ## Acknowledgement 📚
-- **ABAP CDS / Annotations**
+- **ABAP CDS**
 - **Javascript / UI5**
 - **Fiori Elements**
 
